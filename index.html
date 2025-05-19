@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Product Stock Viewer</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f7fa;
+      padding: 20px;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+    }
+    .product-card {
+      background: #fff;
+      padding: 20px;
+      margin: 10px auto;
+      max-width: 400px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .stock {
+      font-weight: bold;
+      margin: 10px 0;
+    }
+    .error {
+      color: red;
+    }
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #2980b9;
+    }
+  </style>
+</head>
+<body>
+  <h1>Product Stock Viewer</h1>
+
+  <div class="product-card" id="product-p1">
+    <h3>Product A (ID: p1)</h3>
+    <p class="stock" id="stock-p1">Loading...</p>
+    <button onclick="sellProduct('p1')">Sell</button>
+  </div>
+  <div class="product-card" id="product-p2">
+    <h3>Product B (ID: p2)</h3>
+    <p class="stock" id="stock-p2">Loading...</p>
+    <button onclick="sellProduct('p2')">Sell</button>
+  </div>
+  <div class="product-card" id="product-p3">
+    <h3>Product C (ID: p3)</h3>
+    <p class="stock" id="stock-p3">Loading...</p>
+    <button onclick="sellProduct('p3')">Sell</button>
+  </div>
+
+  <script>
+    const apiBase = "http://127.0.0.1:5000";
+
+    async function fetchAmazonStock(productId) {
+      try {
+        const response = await fetch(`${apiBase}/amazon-inventory`);
+        const data = await response.json();
+        const product = data.find(item => item.product_id === productId);
+
+        const stockElement = document.getElementById(`stock-${productId}`);
+        if (product) {
+          stockElement.textContent = `Stock: ${product.stock}`;
+        } else {
+          stockElement.innerHTML = `<span class="error">Product not found.</span>`;
+        }
+      } catch (error) {
+        document.getElementById(`stock-${productId}`).innerHTML = `<span class="error">Error fetching stock.</span>`;
+        console.error("Fetch error:", error);
+      }
+    }
+
+    async function sellProduct(productId) {
+      const stockElement = document.getElementById(`stock-${productId}`);
+      let currentStock = parseInt(stockElement.textContent.split(':')[1]);
+
+      if (isNaN(currentStock) || currentStock <= 0) {
+        alert("Stock is already zero or unavailable.");
+        return;
+      }
+
+      const newStock = currentStock - 1;
+
+      try {
+        const response = await fetch(`${apiBase}/amazon-inventory`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ product_id: productId, stock: newStock })
+        });
+
+        const result = await response.json();
+        if (result.message) {
+          stockElement.textContent = `Stock: ${newStock}`;
+        } else {
+          throw new Error("Invalid response from server.");
+        }
+      } catch (error) {
+        stockElement.innerHTML = `<span class="error">Error updating stock.</span>`;
+        console.error("Update error:", error);
+      }
+    }
+
+    const productIds = ["p1", "p2", "p3"];
+    productIds.forEach(fetchAmazonStock);
+  </script>
+</body>
+</html>
